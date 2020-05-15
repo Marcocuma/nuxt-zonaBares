@@ -1,72 +1,104 @@
 <template>
   <div class="container">
-    <div>
-      <logo />
-      <h1 class="title">
-        zonaBares
-      </h1>
-      <h2 class="subtitle">
-        Proyecto directorio bares
-      </h2>
-      <div class="links">
-        <a
-          href="https://nuxtjs.org/"
-          target="_blank"
-          class="button--green"
-        >
-          Documentation
-        </a>
-        <a
-          href="https://github.com/nuxt/nuxt.js"
-          target="_blank"
-          class="button--grey"
-        >
-          GitHub
-        </a>
-      </div>
+    <hero
+      @cambiarBanner="cambiarBanner"
+    >
+      <banner slot="header" v-if="showBanner"/>
+      <slogan slot="header" v-if="!showBanner"/>
+    </hero>
+    <div class="container">
+      <section class="section">
+        <div class="columns is-multiline">
+          <barCard v-for="(bar,index) in restaurants"
+            :key="index"
+            :index="index"
+            :name="bar.name"
+            :description="bar.description"
+            :category="bar.category"
+            :slug="bar.slug"
+            :likes="bar.likes"
+            :image="bar.image"
+            @onLikeButton="(sumLikes(bar))"
+            class="restaurant-card"
+          />
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script>
-import Logo from '~/components/Logo.vue'
-
+import barCard from "~/components/barCard"
+import hero from "~/components/hero"
+import banner from "~/components/banner"
+import slogan from "~/components/slogan"
+import api from "~/services/api"
+import { db } from '~/plugins/firebase'
 export default {
+  created() {
+    const data = db.collection('restaurants').get()
+    data
+    .then((snapshot) => {
+      snapshot.forEach((doc) => {
+        const restaurant = {
+          id: doc.id,
+          ...doc.data()
+        }
+        this.restaurants.push(restaurant)
+      })
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+  },
   components: {
-    Logo
+    barCard,
+    hero,
+    banner,
+    slogan
+  },
+  /*async asyncData() {
+    try {
+      const { data } = await api.getRestaurants()
+      return { restaurants: data }
+    } catch (error) {
+      error({ statusCode: 404, message: 'Restaurant not found' })
+    }
+  },*/
+  /*async created() {
+    const response = await api.getRestaurants()
+    this.restaurants = response.data
+  },*/
+  data() {
+    return {
+      likes: 0,
+      showBanner: true,
+      restaurants: []
+    }
+  },
+  methods: {
+    async sumLikes(restaurant){
+      const payload = {
+        id: restaurant.id,
+        data: {
+          likes: restaurant.likes + 1
+        }
+      }
+      const response = await api.putSumRestaurantLikes(payload)
+      if(response.status == 200) {
+        restaurant.likes++
+      }
+    },
+    cambiarBanner(){
+      this.showBanner = !this.showBanner
+    }
   }
 }
 </script>
 
 <style>
-.container {
-  margin: 0 auto;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.title {
-  font-family: 'Quicksand', 'Source Sans Pro', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  display: block;
-  font-weight: 300;
-  font-size: 100px;
-  color: #35495e;
-  letter-spacing: 1px;
-}
-
-.subtitle {
-  font-weight: 300;
-  font-size: 42px;
-  color: #526488;
-  word-spacing: 5px;
-  padding-bottom: 15px;
-}
-
-.links {
-  padding-top: 15px;
+.restaurant-card{
+  margin:10px 10px;
+  max-width: 300px;
 }
 </style>
